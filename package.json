@@ -1,0 +1,22 @@
+{
+  "name": "sales-listener",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "run": "tsc && node dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@azure/data-tables": "^13.2.2",
+    "@azure/service-bus": "^7.9.0",
+    "@opensea/stream-js": "^0.1.1",
+    "dotenv": "^16.3.1",
+    "ethers": "^6.6.4"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.5"
+  }
+}
