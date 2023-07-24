@@ -2,8 +2,9 @@ import { ItemListedEvent, OpenSeaStreamClient } from "@opensea/stream-js";
 import { EventEmitter, WebSocket } from "ws";
 import { ethers } from "ethers";
 import { Listing } from "../types";
+import { ListingClient } from "../ListingClient";
 
-export class OpenSeaListingsClient extends EventEmitter {
+export class OpenSeaListingsClient extends EventEmitter implements ListingClient {
   private unsubscribes: { [key: string]: (() => void) | undefined } = {};
   private client: OpenSeaStreamClient;
   constructor() {
@@ -76,7 +77,6 @@ export class OpenSeaListingsClient extends EventEmitter {
     const collection = ethers.getAddress(tokenDeets[1]);
     const listing: Listing = {
       source: "opensea.io",
-      slug: listed.payload.collection.slug,
       collection,
       image: listed.payload.item.metadata.image_url,
       url: listed.payload.item.permalink,

@@ -9,6 +9,8 @@ import {
 } from "@azure/service-bus";
 import { TableClient, odata } from "@azure/data-tables";
 import { ethers } from "ethers";
+import { BlurListingsClient } from "./blur";
+import { ListingClient } from "./ListingClient";
 
 dotenv.config();
 
@@ -22,7 +24,7 @@ async function main() {
     process.env.AZURE_SERVICE_BUS || ""
   );
 
-  const subscribedContracts = new Set<string>();
+  let subscribedContracts = new Set<string>();
   const entities = table.listEntities();
   for await (const entity of entities) {
     if (entity.partitionKey) {
@@ -32,20 +34,26 @@ async function main() {
   const receiver = serviceBusClient.createReceiver("tracker-updates");
 
   const listingTopic = serviceBusClient.createSender("listings");
-  const listingClient = new OpenSeaListingsClient();
+  const listingClients: ListingClient[] = [
+    new BlurListingsClient(),
+    new OpenSeaListingsClient(),
+  ];
 
-  listingClient.on("listing", async (listing: Listing) => {
-    console.log(
-      `New listing from ${listing.source} for ${listing.slug} #${listing.token_id}`
-    );
-    const message: ServiceBusMessage = {
-      body: listing,
-    };
-    await listingTopic.sendMessages(message);
-  });
+  for (const listingClient of listingClients) {
+    listingClient.start();
+    listingClient.on("listing", async (listing: Listing) => {
+      console.log(
+        `New listing from ${listing.source} for ${listing.collection} #${listing.token_id}`
+      );
+      const message: ServiceBusMessage = {
+        body: listing,
+      };
+      await listingTopic.sendMessages(message);
+    });
 
-  for (const collection of subscribedContracts) {
-    listingClient.subscribe(collection);
+    for (const collection of subscribedContracts) {
+      listingClient.subscribe(collection);
+    }
   }
 
   const handler: MessageHandlers = {
@@ -54,21 +62,23 @@ async function main() {
 
       const address = ethers.getAddress(body.address);
       if (body.type === "Listing") {
-        if (body.action === "add") {
-          listingClient.subscribe(address);
-        } else {
-          const remaining = table.listEntities({
-            queryOptions: {
-              filter: odata`PartitionKey eq '${address}'`,
-            },
-          });
-          let any = false;
-          for await (const item of remaining) {
-            any = true;
-            break;
-          }
-          if (!any) {
-            listingClient.unsubscribe(address)
+        for (const listingClient of listingClients) {
+          if (body.action === "add") {
+            listingClient.subscribe(address);
+          } else {
+            const remaining = table.listEntities({
+              queryOptions: {
+                filter: odata`PartitionKey eq '${address}'`,
+              },
+            });
+            let any = false;
+            for await (const item of remaining) {
+              any = true;
+              break;
+            }
+            if (!any) {
+              listingClient.unsubscribe(address);
+            }
           }
         }
       }

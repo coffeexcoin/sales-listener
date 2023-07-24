@@ -14,11 +14,10 @@ export type Sale = {
 export type Listing = {
     source: string
     collection: string
-    slug: string
     image: string | null,
     url: string,
     price: number,
-    usdPrice: number,
+    usdPrice?: number,
     symbol: string,
     token_id: string,
     seller: string,
