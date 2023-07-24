@@ -45,7 +45,6 @@ export class BlurListingsClient extends EventEmitter implements ListingClient {
                 command = Number(message)
             } else {
                 const data = message.substring(idx)
-                console.log(data)
                 payload = JSON.parse(data)
                 command = Number(message.substring(0, idx))
             }
@@ -59,8 +58,6 @@ export class BlurListingsClient extends EventEmitter implements ListingClient {
             } else if (command === 40) {
                 self.emit("ready", true)
             } else if (command === 42) {
-                console.log(payload[0])
-                console.log(payload[1])
                 if (payload[0].includes("feeds.activity.eventsCreated")) {
                     const contract = ethers.getAddress(payload[1].contractAddress)
                     for(const item of payload[1].items) {
@@ -83,6 +80,8 @@ export class BlurListingsClient extends EventEmitter implements ListingClient {
                         }
                         self.emit("listing", listing)
                     }
+                } else {
+                    console.log(payload)
                 }
             } else {
                 console.log(payload);
