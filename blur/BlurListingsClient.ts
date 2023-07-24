@@ -67,6 +67,9 @@ export class BlurListingsClient extends EventEmitter implements ListingClient {
                         if (item.marketplace !== 'BLUR') {
                             continue
                         }
+                        if (item.eventType !== 'ORDER_CREATED') {
+                            continue
+                        }
                         const listing: Listing = {
                             source: 'blur.io',
                             seller: item.fromAddress,
@@ -74,7 +77,7 @@ export class BlurListingsClient extends EventEmitter implements ListingClient {
                             image: item.imageUrl,
                             price: Number(item.price),
                             token_id: item.tokenId,
-                            symbol: 'ETH',
+                            symbol: item.priceUnit,
                             timestamp: item.createdAt,
                             url: `https://blur.io/asset/${contract}/${item.tokenId}`,
                         }
