@@ -5,6 +5,7 @@ import { ethers } from 'ethers'
 
 export class BlurListingsClient extends EventEmitter implements ListingClient {
 
+    closing: boolean = false;
     ws: WebSocket
     ready: boolean = false;
     nonce: number = 4218;
@@ -22,7 +23,7 @@ export class BlurListingsClient extends EventEmitter implements ListingClient {
     start(): void {
         
         let self = this;
-
+        this.closing = false;
         this.on("ready", (value) => self.ready = value)
         
         this.ws.on('error', console.error);
@@ -30,6 +31,16 @@ export class BlurListingsClient extends EventEmitter implements ListingClient {
         this.ws.on('open', function open() {
           console.log("Connected to Blur")
         });
+
+        this.ws.on('close', (code, reason) => {
+            if (!self.closing) {
+                console.warn("Blur websocket closed unexpectedly. Attempting restart");
+                self.stop();
+                self.start();
+            } else {
+                console.log("Blur websocket closed");
+            }
+        })
 
         this.ws.on('message', function message(data) {
             const message = data.toString()
@@ -59,7 +70,8 @@ export class BlurListingsClient extends EventEmitter implements ListingClient {
                 self.emit("ready", true)
             } else if (command === 42) {
                 if (payload[0].includes("feeds.activity.eventsCreated")) {
-                    const contract = ethers.getAddress(payload[1].contractAddress)
+                    const contractAddress = payload[1].contractAddress
+                    const collection = ethers.getAddress(payload[1].contractAddress)
                     for(const item of payload[1].items) {
                         if (item.marketplace !== 'BLUR') {
                             continue
@@ -70,13 +82,13 @@ export class BlurListingsClient extends EventEmitter implements ListingClient {
                         const listing: Listing = {
                             source: 'blur.io',
                             seller: item.fromAddress,
-                            collection: contract,
+                            collection,
                             image: item.imageUrl,
                             price: Number(item.price),
                             token_id: item.tokenId,
                             symbol: item.priceUnit,
                             timestamp: item.createdAt,
-                            url: `https://blur.io/asset/${contract}/${item.tokenId}`,
+                            url: `https://blur.io/asset/${contractAddress}/${item.tokenId}`,
                         }
                         self.emit("listing", listing)
                     }
@@ -90,11 +102,11 @@ export class BlurListingsClient extends EventEmitter implements ListingClient {
     }
 
     stop(): void {
-        this.ws.removeAllListeners()
+        this.closing = true;
         this.ws.close()
-        this.subscriptions = {}
         this.nonce = 4218
-        this.ready = false   
+        this.ready = false
+        this.ws = new WebSocket(this.ws.url);
     }
 
     async subscribe(address: string): Promise<void> {
@@ -105,14 +117,14 @@ export class BlurListingsClient extends EventEmitter implements ListingClient {
         }
         const id = ++this.nonce
         this.subscriptions[address] = id;
-        const text = `${id}["subscribe",["${address.toLowerCase()}.feeds.activity.eventsCreated"]]`;
+        const text = `${id}["subscribe",["${address}.feeds.activity.eventsCreated"]]`;
         if (this.ready) {
             console.log(`Ready. Sending ${text}`)
             this.ws.send(text)
         } else {
             const self = this;
             console.log(`Not ready. Queuing ${text}`)
-            this.once("ready", (value) => {
+            this.on("ready", (value) => {
                 if (value) {
                     console.log(`Sending: ${text}`)
                     self.ws.send(text)
@@ -127,7 +139,7 @@ export class BlurListingsClient extends EventEmitter implements ListingClient {
         if (this.subscriptions[address]) {
             const id = this.subscriptions[address]
             this.subscriptions[address] = undefined
-            const text = `${id}["unsubscribe",[${address.toLowerCase()}.feeds.activity.eventsCreated"]]`;
+            const text = `${id}["unsubscribe",[${address}.feeds.activity.eventsCreated"]]`;
             this.ws.send(text)
         }
     }
