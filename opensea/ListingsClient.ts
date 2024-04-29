@@ -5,20 +5,31 @@ import { Listing } from "../types";
 import { ListingClient } from "../ListingClient";
 
 export class OpenSeaListingsClient extends EventEmitter implements ListingClient {
+  private started = false;
   private unsubscribes: { [key: string]: (() => void) | undefined } = {};
   private client: OpenSeaStreamClient;
   constructor() {
     super()
+    const self = this;
     this.client = new OpenSeaStreamClient({
       token: process.env.OS_API_KEY || "",
       connectOptions: {
         transport: WebSocket,
       },
+      onError: (err) => {
+        console.error(err);
+        if (self.started) {
+          self.start();
+        }
+      }
     });
   }
 
   start() {
+    const self = this;
     this.client.connect();
+    self.started = true;
+    console.log("Connected to OpenSea");
   }
 
   async subscribe(contract: string) {
@@ -44,6 +55,7 @@ export class OpenSeaListingsClient extends EventEmitter implements ListingClient
   }
 
   stop() {
+    this.started = false;
     this.client.disconnect();
   }
 
