@@ -14,6 +14,7 @@ import { ListingClient } from "./ListingClient";
 
 dotenv.config();
 
+
 async function main() {
   const table = TableClient.fromConnectionString(
     process.env.AZURE_STORAGE || "",
@@ -52,7 +53,7 @@ async function main() {
     });
 
     for (const collection of subscribedContracts) {
-      listingClient.subscribe(collection);
+      await listingClient.subscribe(collection);
     }
   }
 

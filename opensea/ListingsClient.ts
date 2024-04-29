@@ -1,4 +1,4 @@
-import { ItemListedEvent, OpenSeaStreamClient } from "@opensea/stream-js";
+import { ItemListedEvent, LogLevel, OpenSeaStreamClient } from "@opensea/stream-js";
 import { EventEmitter, WebSocket } from "ws";
 import { ethers } from "ethers";
 import { Listing } from "../types";
@@ -16,6 +16,7 @@ export class OpenSeaListingsClient extends EventEmitter implements ListingClient
       connectOptions: {
         transport: WebSocket,
       },
+      logLevel: LogLevel.INFO,
       onError: (err) => {
         console.error(err);
         if (self.started) {
@@ -23,9 +24,11 @@ export class OpenSeaListingsClient extends EventEmitter implements ListingClient
         }
       }
     });
+    console.log("Created OpenSea client");
   }
 
   start() {
+    console.log("Connecting to OpenSea");
     const self = this;
     this.client.connect();
     self.started = true;
@@ -35,7 +38,12 @@ export class OpenSeaListingsClient extends EventEmitter implements ListingClient
   async subscribe(contract: string) {
     const slug = await this.getSlugForContract(contract);
 
-    if (!slug || this.unsubscribes[slug]) {
+    if (!slug) {
+      console.log("No slug for contract: ", contract)
+      return;
+    }
+    if (this.unsubscribes[slug]) {
+      console.log("Already subscribed to: ", slug)
       return;
     }
 
@@ -43,6 +51,8 @@ export class OpenSeaListingsClient extends EventEmitter implements ListingClient
     this.unsubscribes[slug] = this.client.onItemListed(slug, (listing) => {
         self.ItemListed(listing, (l) => self.emit("listing", l))
     });
+
+    console.log("OS subscribed to: ", slug)
   }
 
   async unsubscribe(contract: string) {
@@ -67,13 +77,14 @@ export class OpenSeaListingsClient extends EventEmitter implements ListingClient
 
     try {
         const resp = await fetch(
-        `https://api.opensea.io/api/v1/asset_contract/${contract}`,
+        `https://api.opensea.io/api/v2/chain/ethereum/contract/${contract}`,
         options
         );
         const data = await resp.json();
-        const slug = data.collection.slug;
+        const slug = data.collection;
         return slug
     } catch (err) {
+        console.error(err);
         return undefined
     }
   }

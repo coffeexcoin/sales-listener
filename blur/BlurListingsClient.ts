@@ -18,6 +18,7 @@ export class BlurListingsClient extends EventEmitter implements ListingClient {
         super()
         this.subscriptions = {}
         this.ws = new WebSocket("wss://feeds.prod.blur.io/socket.io/?tabId=7LnfVmY71H5L&storageId=NTQTFYTPXhjM&EIO=4&transport=websocket")
+        console.log("Created Blur client");
     }
 
     start(): void {
