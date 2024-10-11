@@ -1,9 +1,31 @@
-FROM node:18
+# base
+FROM node:20 AS base
 
-WORKDIR /usr/app
+WORKDIR /app
 
-COPY package.json .
-RUN npm i
-COPY ./dist .
+COPY package*.json ./
+    
+RUN npm install
 
-CMD [ "node", "index.js" ]
+COPY . .
+
+# for build
+
+FROM base as builder
+
+WORKDIR /app
+RUN npm run build
+
+# for production
+
+FROM node:20
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install --only=production
+
+COPY --from=builder /app/dist ./
+
+ENTRYPOINT ["node","./index.js"]
