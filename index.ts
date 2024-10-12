@@ -55,7 +55,6 @@ async function main() {
   }
   const receiver = serviceBusClient.createReceiver("tracker-updates");
 
-  const listingTopic = serviceBusClient.createSender("listings");
   const listingClients: ListingClient[] = [
     new BlurListingsClient(),
     new OpenSeaListingsClient(),
@@ -67,10 +66,6 @@ async function main() {
       console.log(
         `New listing from ${listing.source} for ${listing.collection} #${listing.token_id}`
       );
-      const message: ServiceBusMessage = {
-        body: listing,
-      };
-      await listingTopic.sendMessages(message);
 
       await pub.send({exchange: 'listings'}, listing)
     });
