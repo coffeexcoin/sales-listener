@@ -11,11 +11,31 @@ import { TableClient, odata } from "@azure/data-tables";
 import { ethers } from "ethers";
 import { BlurListingsClient } from "./blur";
 import { ListingClient } from "./ListingClient";
+import { Connection } from "rabbitmq-client";
+import { config } from "./config";
 
 dotenv.config();
 
-
 async function main() {
+
+  console.log(process.env.RABBITMQ_CONNECTION)
+  const rabbit = new Connection(process.env.RABBITMQ_CONNECTION)
+  rabbit.on('error', (err) => {
+    console.log('RabbitMQ connection error', err)
+  })
+  rabbit.on('connection', () => {
+    console.log('Connection successfully (re)established')
+  })
+
+  const pub = rabbit.createPublisher({
+    // Enable publish confirmations, similar to consumer acknowledgements
+    confirm: true,
+    // Enable retries
+    maxAttempts: 2,
+    // Optionally ensure the existence of an exchange before we use it
+    exchanges: [{exchange: 'listings', type: 'topic', durable: true}]
+  })
+
   const table = TableClient.fromConnectionString(
     process.env.AZURE_STORAGE || "",
     "listings"
@@ -50,6 +70,8 @@ async function main() {
         body: listing,
       };
       await listingTopic.sendMessages(message);
+
+      await pub.send({exchange: 'listings'}, listing)
     });
 
     for (const collection of subscribedContracts) {
