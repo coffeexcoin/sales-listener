@@ -1,12 +1,6 @@
 import dotenv from "dotenv";
 import { Listing, TrackerAction } from "./types";
 import { OpenSeaListingsClient } from "./opensea";
-import {
-  MessageHandlers,
-  ProcessErrorArgs,
-  ServiceBusClient,
-  ServiceBusMessage,
-} from "@azure/service-bus";
 import { TableClient, odata } from "@azure/data-tables";
 import { ethers } from "ethers";
 import { BlurListingsClient } from "./blur";
@@ -34,16 +28,12 @@ async function main() {
     // Enable retries
     maxAttempts: 2,
     // Optionally ensure the existence of an exchange before we use it
-    exchanges: [{exchange: 'listings', type: 'topic', durable: true}]
+    exchanges: [{ exchange: 'listings', type: 'topic', durable: true }]
   })
 
   const table = TableClient.fromConnectionString(
     process.env.AZURE_STORAGE || "",
     "listings"
-  );
-
-  const serviceBusClient = new ServiceBusClient(
-    process.env.AZURE_SERVICE_BUS || ""
   );
 
   let subscribedContracts = new Set<string>();
@@ -53,7 +43,6 @@ async function main() {
       subscribedContracts.add(entity.partitionKey);
     }
   }
-  const receiver = serviceBusClient.createReceiver("tracker-updates");
 
   const listingClients: ListingClient[] = [
     new BlurListingsClient(),
@@ -67,7 +56,7 @@ async function main() {
         `New listing from ${listing.source} for ${listing.collection} #${listing.token_id}`
       );
 
-      await pub.send({exchange: 'listings'}, listing)
+      await pub.send({ exchange: 'listings' }, listing)
     });
 
     for (const collection of subscribedContracts) {
@@ -75,36 +64,32 @@ async function main() {
     }
   }
 
-  const handler: MessageHandlers = {
-    processMessage: async (message: ServiceBusMessage) => {
-      const body = message.body as TrackerAction;
+  const handleNewSubscription = async (message: any) => {
+    const body = message as TrackerAction;
 
-      const address = ethers.getAddress(body.address);
-      if (body.type === "Listing") {
-        for (const listingClient of listingClients) {
-          if (body.action === "add") {
-            listingClient.subscribe(address);
-          } else {
-            const remaining = table.listEntities({
-              queryOptions: {
-                filter: odata`PartitionKey eq '${address}'`,
-              },
-            });
-            let any = false;
-            for await (const item of remaining) {
-              any = true;
-              break;
-            }
-            if (!any) {
-              listingClient.unsubscribe(address);
-            }
+    const address = ethers.getAddress(body.address);
+    if (body.type === "Listing") {
+      for (const listingClient of listingClients) {
+        if (body.action === "add") {
+          listingClient.subscribe(address);
+        } else {
+          const remaining = table.listEntities({
+            queryOptions: {
+              filter: odata`PartitionKey eq '${address}'`,
+            },
+          });
+          let any = false;
+          for await (const item of remaining) {
+            any = true;
+            break;
+          }
+          if (!any) {
+            listingClient.unsubscribe(address);
           }
         }
       }
-    },
-    processError: async (error: ProcessErrorArgs) => {},
-  };
-  receiver.subscribe(handler);
+    }
+  }
 }
 
 main();
