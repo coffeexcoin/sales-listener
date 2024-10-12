@@ -12,7 +12,6 @@ import { ethers } from "ethers";
 import { BlurListingsClient } from "./blur";
 import { ListingClient } from "./ListingClient";
 import { Connection } from "rabbitmq-client";
-import { config } from "./config";
 
 dotenv.config();
 
