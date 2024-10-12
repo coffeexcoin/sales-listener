@@ -18,8 +18,10 @@ dotenv.config();
 
 async function main() {
 
-  console.log(process.env.RABBITMQ_CONNECTION)
-  const rabbit = new Connection(process.env.RABBITMQ_CONNECTION)
+  const rabbit = new Connection({
+    url: process.env.RABBITMQ_CONNECTION,
+    connectionName: 'sales-listener'
+  });
   rabbit.on('error', (err) => {
     console.log('RabbitMQ connection error', err)
   })
