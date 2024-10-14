@@ -20,8 +20,8 @@ jobs:
         password: ${{ secrets.DOCKER_PAT }}
         
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag coffeexdev/sales-listener:$(date +%s)
+      run: docker build . --file Dockerfile --tag coffeexdev/sales-listener:$(git rev-parse --short "$GITHUB_SHA") --tag coffeexdev/sales-listener:latest
       
     - name: Push the docker image
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-      run: docker push coffeexdev/sales-listener:$(date +%s) && docker push coffeexdev/sales-listener:latest
+      run: docker push coffeexdev/sales-listener:$(git rev-parse --short "$GITHUB_SHA") && docker push coffeexdev/sales-listener:latest
