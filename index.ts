@@ -56,7 +56,7 @@ async function main() {
         `New listing from ${listing.source} for ${listing.collection} #${listing.token_id}`
       );
 
-      await pub.send({ exchange: 'listings' }, listing)
+      await pub.send({ exchange: 'nft.listings' }, listing)
     });
 
     for (const collection of subscribedContracts) {
