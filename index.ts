@@ -28,7 +28,7 @@ async function main() {
     // Enable retries
     maxAttempts: 2,
     // Optionally ensure the existence of an exchange before we use it
-    exchanges: [{ exchange: 'listings', type: 'topic', durable: true }]
+    exchanges: [{ exchange: 'nft.listings', type: 'fanout', durable: true }]
   })
 
   const table = TableClient.fromConnectionString(
